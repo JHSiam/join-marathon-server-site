@@ -30,6 +30,7 @@ async function run() {
         await client.connect();
         const database = client.db('MarathonDB');
         const UsersCollection = database.collection('MarathonCollection');
+        const RegisterCollection = database.collection('RegisterCollection');
 
         app.get('/users', async (req, res) => {
             const cursor = UsersCollection.find();
@@ -60,6 +61,14 @@ async function run() {
             const user = req.body;
             console.log('new user', user);
             const result = await UsersCollection.insertOne(user);
+            res.send(result);
+
+        })
+
+        app.post('/registrations', async (req, res) => {
+            const user = req.body;
+            console.log('new user', user);
+            const result = await RegisterCollection.insertOne(user);
             res.send(result);
 
         })
