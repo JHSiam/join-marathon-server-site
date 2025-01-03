@@ -37,6 +37,17 @@ async function run() {
             const result = await cursor.toArray();
             res.send(result);
         });
+
+        app.get('/home-marathon', async (req, res) => {
+            try {
+                const result = await UsersCollection.find().limit(6).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                res.status(500).send({ error: 'An error occurred while fetching users.' });
+            }
+        });
+        
         app.get('/users/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
@@ -61,6 +72,31 @@ async function run() {
             }
         });
 
+        app.get('/registrations/:email', async (req, res) => {
+            const email = req.params.email; // Get email from route parameters
+            const title = req.query.title; // Get optional title query parameter
+        
+            if (!email) {
+                return res.status(400).send({ error: 'Email is required' });
+            }
+        
+            try {
+                const filter = { registerEmail: email };
+        
+                // If a title query is provided, add it to the filter
+                if (title) {
+                    filter.title = { $regex: title, $options: 'i' }; // Case-insensitive search
+                }
+        
+                const cursor = RegisterCollection.find(filter); // Apply the filter
+                const result = await cursor.toArray(); // Convert to array
+                res.send(result); // Send the filtered result
+            } catch (error) {
+                res.status(500).send({ error: 'Failed to fetch registrations' });
+            }
+        });
+        
+
         app.put('/users/:id', async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
@@ -70,6 +106,19 @@ async function run() {
             }
 
             const result = await UsersCollection.updateOne(filter, updatedDoc, options )
+
+            res.send(result);
+        })
+
+        app.put('/registrations/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: req.body
+            }
+
+            const result = await RegisterCollection.updateOne(filter, updatedDoc, options )
 
             res.send(result);
         })
@@ -95,6 +144,14 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await UsersCollection.deleteOne(query);
+            res.send(result);
+        })
+
+        app.delete('/registrations/:id', async (req, res) => {
+            console.log('going to delete', req.params.id);
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await RegisterCollection.deleteOne(query);
             res.send(result);
         })
 
