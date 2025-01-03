@@ -43,6 +43,23 @@ async function run() {
             const result = await UsersCollection.findOne(query);
             res.send(result);
         })
+        app.get('/marathons/:email', async (req, res) => {
+            const email = req.params.email; // Get email from query parameters
+            //console.log(email);
+            
+        
+            if (!email) {
+                return res.status(400).send({ error: 'Email is required' });
+            }
+        
+            try {
+                const cursor = UsersCollection.find({ email: email }); // Filter by userEmail
+                const result = await cursor.toArray(); // Convert to array
+                res.send(result); // Send the filtered result
+            } catch (error) {
+                res.status(500).send({ error: 'Failed to fetch campaigns' });
+            }
+        });
 
         app.put('/users/:id', async (req, res) => {
             const id = req.params.id;
@@ -81,18 +98,18 @@ async function run() {
             res.send(result);
         })
 
-        app.patch('/users', async (req, res) => {
-            const email = req.body.email;
-            const filter = { email };
-            const updatedDoc = {
-                $set: {
-                    lastSignInTime: req.body?.lastSignInTime
-                }
-            }
+        // app.patch('/users', async (req, res) => {
+        //     const email = req.body.email;
+        //     const filter = { email };
+        //     const updatedDoc = {
+        //         $set: {
+        //             lastSignInTime: req.body?.lastSignInTime
+        //         }
+        //     }
 
-            const result = await UsersCollection.updateOne(filter, updatedDoc);
-            res.send(result);
-        })
+        //     const result = await UsersCollection.updateOne(filter, updatedDoc);
+        //     res.send(result);
+        // })
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
