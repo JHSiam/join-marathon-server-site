@@ -1,19 +1,29 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
+require('dotenv').config();
 
 const port = process.env.PORT || 5000;
 
 //middle ware
 //iamjhsiam
 //0mwW4VeE24OcnDlF
-app.use(cors());
+app.use(cors({
+    origin: [
+        'http://localhost:5173'
+    ],
+    credentials: true
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 
 
-const uri = "mongodb+srv://iamjhsiam:0mwW4VeE24OcnDlF@cluster0.iyayy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+//const uri = "mongodb+srv://iamjhsiam:0mwW4VeE24OcnDlF@cluster0.iyayy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.iyayy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -32,11 +42,36 @@ async function run() {
         const UsersCollection = database.collection('MarathonCollection');
         const RegisterCollection = database.collection('RegisterCollection');
 
-        app.get('/users', async (req, res) => {
-            const cursor = UsersCollection.find();
-            const result = await cursor.toArray();
-            res.send(result);
+        // auth related APIs
+        app.post('/jwt', (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '10h' });
+
+            res
+                .cookie('token', token, {
+                    httpOnly: true,
+                    secure: false
+                    //secure: process.env.NODE_ENV === 'production',
+                    //sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
+                })
+                .send({ success: true })
+
         });
+
+        app.get('/users', async (req, res) => {
+            try {
+                const sort = req.query.sort; // Get the sort parameter from the query
+                const sortOrder = sort === 'old-to-new' ? 1 : -1; // Default to "new-to-old" (-1)
+                
+                const cursor = UsersCollection.find().sort({ createdAt: sortOrder }); // Apply sorting
+                const result = await cursor.toArray(); // Convert the sorted data to an array
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                res.status(500).send('Internal Server Error');
+            }
+        });
+        
 
         app.get('/home-marathon', async (req, res) => {
             try {
