@@ -20,6 +20,23 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+const verifyToken = (req, res, next) => {
+    const token = req.cookies?.token;
+
+    if (!token) {
+        return res.status(401).send({ message: 'unauthorized access' });
+    }
+
+    // verify the token
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ message: 'unauthorized access' });
+        }
+        req.user = decoded;
+        next();
+    })
+}
+
 
 
 //const uri = "mongodb+srv://iamjhsiam:0mwW4VeE24OcnDlF@cluster0.iyayy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
@@ -50,15 +67,29 @@ async function run() {
             res
                 .cookie('token', token, {
                     httpOnly: true,
-                    secure: false
-                    //secure: process.env.NODE_ENV === 'production',
-                    //sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
+                    //secure: false
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
                 })
                 .send({ success: true })
 
         });
 
-        app.get('/users', async (req, res) => {
+        app.post('/logout', (req, res) => {
+            res
+                .clearCookie('token', {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
+                    //secure: false
+                })
+                .send({ success: true })
+            
+        })
+
+        //Main APIs
+
+        app.get('/users', verifyToken, async (req, res) => {
             try {
                 const sort = req.query.sort; // Get the sort parameter from the query
                 const sortOrder = sort === 'old-to-new' ? 1 : -1; // Default to "new-to-old" (-1)
@@ -83,13 +114,13 @@ async function run() {
             }
         });
         
-        app.get('/users/:id', async (req, res) => {
+        app.get('/users/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await UsersCollection.findOne(query);
             res.send(result);
         })
-        app.get('/marathons/:email', async (req, res) => {
+        app.get('/marathons/:email', verifyToken, async (req, res) => {
             const email = req.params.email; // Get email from query parameters
             //console.log(email);
             
@@ -107,7 +138,7 @@ async function run() {
             }
         });
 
-        app.get('/registrations/:email', async (req, res) => {
+        app.get('/registrations/:email', verifyToken, async (req, res) => {
             const email = req.params.email; // Get email from route parameters
             const title = req.query.title; // Get optional title query parameter
         
@@ -158,7 +189,7 @@ async function run() {
             res.send(result);
         })
 
-        app.post('/users', async (req, res) => {
+        app.post('/users', verifyToken, async (req, res) => {
             const user = req.body;
             console.log('new user', user);
             const result = await UsersCollection.insertOne(user);
